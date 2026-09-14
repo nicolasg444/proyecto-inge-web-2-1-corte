@@ -1,6 +1,7 @@
 import { auth, db } from "./firebase-config.js";
 import { createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { apiFetch, ensureApiSession } from "./api-auth.js";
 
 const registerForm = document.getElementById("registerForm");
 const registerName = document.getElementById("registerName");
@@ -14,11 +15,14 @@ const registerResponse = document.getElementById("registerResponse");
 async function mirrorUserToLocalApi(profile) {
   if (!["localhost", "127.0.0.1"].includes(window.location.hostname)) return;
   try {
-    await fetch("/api/usuarios", {
+    const response = await apiFetch("/api/usuarios", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(profile)
     });
+    if (!response.ok) {
+      console.warn("La API rechazó la sincronización del usuario:", response.status);
+    }
   } catch (error) {
     console.warn("La cuenta se creó en Firebase, pero no se pudo reflejar en la API local:", error);
   }
@@ -51,6 +55,7 @@ registerForm.addEventListener("submit", async event => {
     await mirrorUserToLocalApi(profile);
     localStorage.setItem("wayture_logged_user", nombre);
     localStorage.setItem("wayture_user_role", rol);
+    await ensureApiSession(cred.user.uid, email, rol);
     registerResponse.textContent = "Cuenta de viajero creada. Redirigiendo a tu panel...";
     setTimeout(() => { window.location.href = "panel-usuario.html#mis-viajes"; }, 900);
   }catch(error){

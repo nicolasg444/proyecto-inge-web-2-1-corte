@@ -3,13 +3,13 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-aut
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA0aMZzRDGdRRU4RIR_r8IG26frpFG6KuE",
-  authDomain: "waytrue-38d39.firebaseapp.com",
-  projectId: "waytrue-38d39",
-  storageBucket: "waytrue-38d39.firebasestorage.app",
-  messagingSenderId: "585717570483",
-  appId: "1:585717570483:web:9a8b244d9dd3ff4d7449c6",
-  measurementId: "G-VJ4WRPL6FG"
+  apiKey: "AIzaSyA_6DQ7XCnx1cxbcZhAPZCDfsZhLVG9Mvs",
+  authDomain: "wayture-37479.firebaseapp.com",
+  projectId: "wayture-37479",
+  storageBucket: "wayture-37479.firebasestorage.app",
+  messagingSenderId: "311863644027",
+  appId: "1:311863644027:web:db11d6e75fd14d9706b7de",
+  measurementId: "G-1YLZBQCNGL"
 };
 
 const app = initializeApp(firebaseConfig);

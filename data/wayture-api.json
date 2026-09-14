@@ -63,6 +63,26 @@
       "nombre": "Cardenas",
       "email": "Cardenas@gmail.com",
       "alias": "Chupona"
+    },
+    {
+      "id": "gkRT5hHhGpg4nlURudM1RqWTS3L2",
+      "uid": "gkRT5hHhGpg4nlURudM1RqWTS3L2",
+      "nombre": "santiago",
+      "alias": "skizm",
+      "email": "perillad82@gmail.com",
+      "rol": "usuario",
+      "creadoEn": "2026-08-19T17:02:37.560Z",
+      "actualizadoEn": "2026-08-19T17:02:37.560Z"
+    },
+    {
+      "id": "B2E7yZGeZGb23mqWHatJnpwvWRj1",
+      "uid": "B2E7yZGeZGb23mqWHatJnpwvWRj1",
+      "nombre": "san",
+      "alias": "skizm",
+      "email": "davidgl@gmail.com",
+      "rol": "usuario",
+      "creadoEn": "2026-08-19T17:04:53.453Z",
+      "actualizadoEn": "2026-08-19T17:04:53.453Z"
     }
   ],
   "viajes": [
@@ -2191,6 +2211,158 @@
           "estado": "Planificado",
           "id": "1780064932682-c4cf112d2340a8",
           "progreso": 0
+        }
+      ]
+    },
+    {
+      "destino": "Bogota",
+      "origen": "Medellin",
+      "nombreViaje": "Prueba JWT+CSRF",
+      "codigoViaje": "WT-PRUEBA-1",
+      "id": "wt-prueba-1",
+      "code": "WT-PRUEBA-1",
+      "destination": "Bogota",
+      "route": [
+        {
+          "lat": 6.2442,
+          "lng": -75.5812,
+          "label": "Medellin",
+          "time": "2026-09-13T05:04:31.598Z"
+        },
+        {
+          "lat": 6.01422,
+          "lng": -75.354835,
+          "label": "Salida de Medellin",
+          "time": "2026-09-13T05:49:31.598Z"
+        },
+        {
+          "lat": 5.738244,
+          "lng": -75.083197,
+          "label": "Punto intermedio 1",
+          "time": "2026-09-13T06:34:31.598Z"
+        },
+        {
+          "lat": 5.232288,
+          "lng": -74.585194,
+          "label": "Punto intermedio 2",
+          "time": "2026-09-13T08:04:31.598Z"
+        },
+        {
+          "lat": 4.94098,
+          "lng": -74.298465,
+          "label": "Cerca de Bogota",
+          "time": "2026-09-13T08:54:31.598Z"
+        },
+        {
+          "lat": 4.711,
+          "lng": -74.0721,
+          "label": "Bogota",
+          "time": "2026-09-13T09:34:31.598Z"
+        }
+      ],
+      "estado": "Planificado",
+      "status": "Planificado",
+      "progreso": 0,
+      "createdAt": "2026-09-13T05:04:31.598Z",
+      "updatedAt": "2026-09-13T05:04:31.598Z",
+      "simulacionActiva": false,
+      "currentLocation": {
+        "lat": 6.2442,
+        "lng": -75.5812,
+        "label": "Medellin",
+        "time": "2026-09-13T05:04:31.598Z"
+      },
+      "statusHistory": [
+        {
+          "id": "1789275871598-f90f59b07da1b",
+          "estado": "Planificado",
+          "newStatus": "Planificado",
+          "previousStatus": "",
+          "progreso": 0,
+          "ubicacion": "Medellin",
+          "location": "Medellin",
+          "lat": 6.2442,
+          "lng": -75.5812,
+          "fecha": "2026-09-13T05:04:31.598Z",
+          "changedAt": "2026-09-13T05:04:31.598Z",
+          "observacion": "Viaje creado",
+          "comment": "Viaje creado"
+        }
+      ]
+    },
+    {
+      "destino": "Bogota",
+      "origen": "Medellin",
+      "nombreViaje": "Prueba JWT+CSRF",
+      "codigoViaje": "WT-PRUEBA-MTZCZZMZ",
+      "id": "wt-prueba-mtzczzmz",
+      "code": "WT-PRUEBA-MTZCZZMZ",
+      "destination": "Bogota",
+      "route": [
+        {
+          "lat": 6.2442,
+          "lng": -75.5812,
+          "label": "Medellin",
+          "time": "2026-09-13T05:14:08.737Z"
+        },
+        {
+          "lat": 6.01422,
+          "lng": -75.354835,
+          "label": "Salida de Medellin",
+          "time": "2026-09-13T05:59:08.737Z"
+        },
+        {
+          "lat": 5.738244,
+          "lng": -75.083197,
+          "label": "Punto intermedio 1",
+          "time": "2026-09-13T06:44:08.737Z"
+        },
+        {
+          "lat": 5.232288,
+          "lng": -74.585194,
+          "label": "Punto intermedio 2",
+          "time": "2026-09-13T08:14:08.737Z"
+        },
+        {
+          "lat": 4.94098,
+          "lng": -74.298465,
+          "label": "Cerca de Bogota",
+          "time": "2026-09-13T09:04:08.737Z"
+        },
+        {
+          "lat": 4.711,
+          "lng": -74.0721,
+          "label": "Bogota",
+          "time": "2026-09-13T09:44:08.737Z"
+        }
+      ],
+      "estado": "Planificado",
+      "status": "Planificado",
+      "progreso": 0,
+      "createdAt": "2026-09-13T05:14:08.737Z",
+      "updatedAt": "2026-09-13T05:14:08.737Z",
+      "simulacionActiva": false,
+      "currentLocation": {
+        "lat": 6.2442,
+        "lng": -75.5812,
+        "label": "Medellin",
+        "time": "2026-09-13T05:14:08.737Z"
+      },
+      "statusHistory": [
+        {
+          "id": "1789276448738-c748913dbf1fc8",
+          "estado": "Planificado",
+          "newStatus": "Planificado",
+          "previousStatus": "",
+          "progreso": 0,
+          "ubicacion": "Medellin",
+          "location": "Medellin",
+          "lat": 6.2442,
+          "lng": -75.5812,
+          "fecha": "2026-09-13T05:14:08.738Z",
+          "changedAt": "2026-09-13T05:14:08.738Z",
+          "observacion": "Viaje creado",
+          "comment": "Viaje creado"
         }
       ]
     }

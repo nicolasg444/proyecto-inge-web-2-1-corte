@@ -1,5 +1,5 @@
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "waytrue-38d39";
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || "AIzaSyA0aMZzRDGdRRU4RIR_r8IG26frpFG6KuE";
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "wayture-37479";
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || "AIzaSyA_6DQ7XCnx1cxbcZhAPZCDfsZhLVG9Mvs";
 const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 function firestoreUrl(path) {

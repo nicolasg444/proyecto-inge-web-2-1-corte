@@ -1,6 +1,7 @@
 import { auth, db } from "./firebase-config.js";
 import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { collection, doc, getDoc, getDocs, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { ensureApiSession } from "./api-auth.js";
 
 const loginForm = document.getElementById("loginForm");
 const loginEmail = document.getElementById("loginEmail");
@@ -45,6 +46,7 @@ loginForm.addEventListener("submit", async event => {
     }
     localStorage.setItem("wayture_logged_user", nombre);
     localStorage.setItem("wayture_user_role", rol);
+    await ensureApiSession(user.uid, user.email || email, rol);
     const isAdmin = rol === "admin";
     welcomeBox.textContent = `Bienvenido, ${nombre}. Rol: ${rol}. Redirigiendo...`;
     setTimeout(() => { window.location.href = isAdmin ? "admin-viajes.html#panel" : "panel-usuario.html#mis-viajes"; }, 900);

@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -24,6 +25,10 @@ const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "wayture-api.json");
 const USE_FIREBASE_REST = process.env.USE_FIREBASE_REST !== "false";
+const API_AUTH_ENABLED = process.env.API_AUTH_ENABLED === "true" || process.env.API_AUTH_ENABLED === "1";
+const JWT_SECRET = process.env.JWT_SECRET || "wayture-dev-secret-change-me";
+const CSRF_SECRET = process.env.CSRF_SECRET || "wayture-csrf-dev-secret";
+const JWT_TTL_MS = Number(process.env.JWT_TTL_MS || 1000 * 60 * 60 * 8);
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -39,14 +44,93 @@ const MIME_TYPES = {
   ".bmp": "image/bmp"
 };
 
-function json(res, status, payload) {
+function json(res, status, payload, extraHeaders = {}) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-CSRF-Token",
+    "Access-Control-Allow-Credentials": "true",
+    ...extraHeaders
   });
   res.end(JSON.stringify(payload, null, 2));
+}
+
+function b64url(input) {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function b64urlDecode(value) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  return Buffer.from(padded, "base64").toString("utf8");
+}
+
+function signJwt(payload, secret = JWT_SECRET) {
+  const header = { alg: "HS256", typ: "JWT" };
+  const encodedHeader = b64url(JSON.stringify(header));
+  const encodedPayload = b64url(JSON.stringify(payload));
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+  const signature = crypto.createHmac("sha256", secret).update(signingInput).digest("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return `${signingInput}.${signature}`;
+}
+
+function verifyJwt(token, secret = JWT_SECRET) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [headerBase64, payloadBase64, signature] = parts;
+  const signingInput = `${headerBase64}.${payloadBase64}`;
+  const expected = crypto.createHmac("sha256", secret).update(signingInput).digest("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  const expectedBuffer = Buffer.from(expected);
+  const signatureBuffer = Buffer.from(signature);
+  if (expectedBuffer.length !== signatureBuffer.length) return null;
+  if (!crypto.timingSafeEqual(expectedBuffer, signatureBuffer)) return null;
+  try {
+    const payload = JSON.parse(b64urlDecode(payloadBase64));
+    if (payload.exp && Date.now() > payload.exp * 1000) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function createCsrfToken() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
+function getCsrfTokenFromRequest(req) {
+  const header = req.headers["x-csrf-token"] || req.headers["x-xsrf-token"];
+  return clean(typeof header === "string" ? header : Array.isArray(header) ? header[0] : "");
+}
+
+function verifyCsrf(req, token) {
+  const provided = getCsrfTokenFromRequest(req);
+  if (!provided || !token || provided !== token) return false;
+  return true;
+}
+
+function requireApiAuth(req, res) {
+  if (!API_AUTH_ENABLED) return { ok: true, user: null };
+  const authHeader = req.headers.authorization || "";
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  const token = match ? match[1] : "";
+  const payload = verifyJwt(token, JWT_SECRET);
+  if (!payload) {
+    json(res, 401, { ok: false, error: "Token JWT inválido o expirado." });
+    return { ok: false };
+  }
+  const csrfToken = req.headers["x-csrf-token"] || req.headers["x-xsrf-token"] || "";
+  const csrfValid = payload.csrf && String(csrfToken) === String(payload.csrf);
+  if (!csrfValid) {
+    json(res, 403, { ok: false, error: "CSRF inválido. Solicita un nuevo token antes de actualizar la API." });
+    return { ok: false };
+  }
+  return { ok: true, user: payload };
 }
 
 function notFound(res, message = "Ruta no encontrada") {
@@ -198,6 +282,48 @@ function publicTrip(trip) {
 
 async function handleApi(req, res, url) {
   if (req.method === "OPTIONS") return json(res, 200, { ok: true });
+
+  if (req.method === "GET" && url.pathname === "/api/auth/csrf") {
+    const token = createCsrfToken();
+    const signingPayload = {
+      csrf: token,
+      issuedAt: Date.now(),
+      exp: Date.now() + JWT_TTL_MS
+    };
+    const csrfJwt = signJwt(signingPayload, CSRF_SECRET);
+    res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-CSRF-Token",
+      "Set-Cookie": `csrf_token=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600`
+    });
+    return res.end(JSON.stringify({ ok: true, data: { token: csrfJwt, csrfToken: token } }, null, 2));
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/auth/token") {
+    const body = await readBody(req);
+    const uid = clean(body.uid || body.id || "");
+    const email = clean(body.email || "").toLowerCase();
+    const csrfToken = clean(body.csrfToken || getCsrfTokenFromRequest(req) || "");
+    if (!uid && !email) {
+      return json(res, 400, { ok: false, error: "Debes enviar uid o email para generar el token." });
+    }
+    const token = signJwt({
+      uid,
+      email,
+      rol: clean(body.rol || "usuario"),
+      csrf: csrfToken,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor((Date.now() + JWT_TTL_MS) / 1000)
+    }, JWT_SECRET);
+    return json(res, 200, { ok: true, data: { token, user: { uid, email, rol: clean(body.rol || "usuario") }, expiresIn: JWT_TTL_MS } });
+  }
+
+  if (API_AUTH_ENABLED && req.method !== "GET" && !url.pathname.startsWith("/api/auth/")) {
+    const authCheck = requireApiAuth(req, res);
+    if (!authCheck.ok) return;
+  }
 
   const db = await readApiDb();
   const parts = url.pathname.split("/").filter(Boolean);

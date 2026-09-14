@@ -1,6 +1,7 @@
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { clearApiSession } from "./api-auth.js";
 
 const adminLinks = document.querySelectorAll("[data-admin-link]");
 const loginLinks = document.querySelectorAll("[data-login-link]");
@@ -39,6 +40,7 @@ function guestView(){
   userInitials.forEach(box => { box.textContent = "U"; });
   localStorage.removeItem("wayture_logged_user");
   localStorage.removeItem("wayture_user_role");
+  clearApiSession();
 }
 
 function loggedView(nombre, rol){
@@ -80,6 +82,7 @@ onAuthStateChanged(auth, async user => {
 
 logoutButtons.forEach(btn => btn.addEventListener("click", async () => {
   await signOut(auth);
+  clearApiSession();
   guestView();
   window.location.href = "index.html";
 }));

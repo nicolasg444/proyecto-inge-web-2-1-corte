@@ -1,0 +1,4 @@
+﻿node_modules/
+react-widget/node_modules/
+.env
+.env.*

@@ -1,0 +1,75 @@
+.wayture-widget {
+  background: linear-gradient(135deg, #0f172a, #1d4ed8);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  color: #e2e8f0;
+  margin: 2rem auto;
+  max-width: 760px;
+  padding: 2rem;
+}
+
+.widget-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  color: #dbeafe;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.9rem;
+  padding: 0.4rem 0.9rem;
+  text-transform: uppercase;
+}
+
+.wayture-widget h2 {
+  font-size: clamp(1.8rem, 2vw, 2.8rem);
+  margin: 0 0 0.8rem;
+}
+
+.wayture-widget p {
+  color: #dbeafe;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.widget-stats {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 1.8rem;
+}
+
+.widget-stats article {
+  background: rgba(15, 23, 42, 0.28);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 16px;
+  padding: 1rem 0.75rem;
+  text-align: center;
+}
+
+.widget-stats strong {
+  display: block;
+  font-size: 1.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.widget-stats span {
+  color: #bfdbfe;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 640px) {
+  .widget-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .wayture-widget {
+    margin: 1rem;
+    padding: 1.2rem;
+  }
+}
