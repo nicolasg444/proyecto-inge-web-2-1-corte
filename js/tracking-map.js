@@ -5,6 +5,10 @@ import {
 
 const mapStates = new WeakMap();
 
+function escHtml(text) {
+  return String(text ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
+}
+
 function getContainer(container) {
   if (typeof container === "string") return document.getElementById(container);
   return container || null;
@@ -95,7 +99,7 @@ export function renderizarMapaRuta(viaje, options = {}) {
     weight: 2,
     fillColor: "#0f172a",
     fillOpacity: 0.95
-  }).bindTooltip(point.label || "Punto de ruta", { direction: "top" }))).addTo(map);
+  }).bindTooltip(escHtml(point.label || "Punto de ruta"), { direction: "top" }))).addTo(map);
 
   if (!state.marker) {
     state.marker = L.marker(currentLatLng, { icon: markerIcon() || undefined }).addTo(map);
@@ -103,7 +107,7 @@ export function renderizarMapaRuta(viaje, options = {}) {
     state.marker.setLatLng(currentLatLng);
   }
 
-  state.marker.bindPopup(trip.currentLocation.label || "Ubicación GPS real");
+  state.marker.bindPopup(escHtml(trip.currentLocation.label || "Ubicación GPS real"));
   if (options.openPopup) state.marker.openPopup();
 
   if (options.fit !== false && state.routeLayer.getBounds().isValid()) {
@@ -138,7 +142,7 @@ export function moverMarcadorEnRuta(viaje, options = {}) {
     state.marker.setLatLng(currentLatLng);
   }
 
-  state.marker.bindPopup(trip.currentLocation.label || "Ubicación GPS real");
+  state.marker.bindPopup(escHtml(trip.currentLocation.label || "Ubicación GPS real"));
   if (state.traveledLayer) state.traveledLayer.setLatLngs(traveledLatLngs.length ? traveledLatLngs : [currentLatLng]);
   if (state.gpsLinkLayer) {
     if (trip.gpsFueraDeRuta && traveledLatLngs.length) {

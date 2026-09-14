@@ -73,20 +73,20 @@
     }
 
     function saveNote() {
-      localStorage.setItem('wayture_note', editableNote.innerHTML);
+      localStorage.setItem('wayture_note', editableNote.textContent || '');
       noteStatus.textContent = 'Guardada';
     }
 
     function loadNote() {
       const saved = localStorage.getItem('wayture_note');
       if (saved) {
-        editableNote.innerHTML = saved;
+        editableNote.textContent = saved;
         noteStatus.textContent = 'Recuperada';
       }
     }
 
     function clearNote() {
-      editableNote.innerHTML = 'Escribe aquí tu lista de sueños de viaje, recomendaciones, restaurantes o actividades favoritas...';
+      editableNote.textContent = 'Escribe aquí tu lista de sueños de viaje, recomendaciones, restaurantes o actividades favoritas...';
       localStorage.removeItem('wayture_note');
       noteStatus.textContent = 'Eliminada';
     }

@@ -193,6 +193,11 @@ function esc(text) {
   return String(text ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
 }
 
+function setTextSafe(element, value) {
+  if (!element) return;
+  element.textContent = String(value ?? "");
+}
+
 function clean(text) {
   return String(text || "").trim();
 }
@@ -540,7 +545,7 @@ function buildTripData(formData, assigned, existingTrip = {}) {
 function showBlocked(message) {
   if (privateGate) {
     privateGate.classList.remove("is-hidden");
-    privateGate.innerHTML = `<article class="access-card"><span class="eyebrow">Acceso restringido</span><h2>${message}</h2><p class="muted">Inicia sesión con una cuenta de administrador para gestionar viajes.</p><div class="compact-actions blocked-actions"><a class="btn btn-primary" href="login.html">Ir a login</a><a class="btn btn-secondary" href="index.html">Volver al inicio</a></div></article>`;
+    privateGate.innerHTML = `<article class="access-card"><span class="eyebrow">Acceso restringido</span><h2>${esc(message)}</h2><p class="muted">Inicia sesión con una cuenta de administrador para gestionar viajes.</p><div class="compact-actions blocked-actions"><a class="btn btn-primary" href="login.html">Ir a login</a><a class="btn btn-secondary" href="index.html">Volver al inicio</a></div></article>`;
   }
   if (adminDashboard) adminDashboard.classList.remove("is-visible");
 }
@@ -768,9 +773,9 @@ function renderSelectedLegacy() {
   }
 
   const status = normalizeStatus(t.status);
-  selectedTripTitle.textContent = t.destination;
+  setTextSafe(selectedTripTitle, t.destination);
   selectedTripCode.textContent = t.code;
-  selectedTripMeta.textContent = `${fmtDate(t.startDate)} - ${fmtDate(t.endDate)} - ${t.travelers} viajero(s) - ${t.experience}`;
+  setTextSafe(selectedTripMeta, `${fmtDate(t.startDate)} - ${fmtDate(t.endDate)} - ${t.travelers} viajero(s) - ${t.experience}`);
   editStatus.innerHTML = statusOptions(status);
   editLastLocation.value = t.lastLocation || "";
   editMapQuery.value = t.mapQuery || t.destination || "";
@@ -1148,9 +1153,9 @@ function renderSelected() {
 
   const trip = ensureTripSimulationFields(t);
   const status = normalizeStatus(trip.status);
-  selectedTripTitle.textContent = getTripName(trip);
+  setTextSafe(selectedTripTitle, getTripName(trip));
   selectedTripCode.textContent = getTripCode(trip);
-  selectedTripMeta.textContent = `${getTripOrigin(trip)} → ${getTripDestination(trip)} - ${trip.progreso}% - ${trip.travelers || 1} viajero(s) · Gestionado por ${trip.managedByName || trip.assignedByEmail || "Sin asignar"}`;
+  setTextSafe(selectedTripMeta, `${getTripOrigin(trip)} → ${getTripDestination(trip)} - ${trip.progreso}% - ${trip.travelers || 1} viajero(s) · Gestionado por ${trip.managedByName || trip.assignedByEmail || "Sin asignar"}`);
   editStatus.innerHTML = statusOptions(status);
   editLastLocation.value = trip.currentLocation?.label || trip.lastLocation || "";
   editMapQuery.value = trip.mapQuery || trip.currentLocation?.label || getTripDestination(trip);

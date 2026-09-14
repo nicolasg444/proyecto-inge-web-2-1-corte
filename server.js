@@ -44,15 +44,30 @@ const MIME_TYPES = {
   ".bmp": "image/bmp"
 };
 
+const SECURITY_HEADERS = {
+  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://www.gstatic.com https://www.googleapis.com https://maps.googleapis.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org wss://*.firebaseio.com https://www.google.com; font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; frame-src 'self' https://www.google.com https://maps.google.com; object-src 'none'; base-uri 'self'; form-action 'self' https://*.firebase.com; upgrade-insecure-requests",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+  "Referrer-Policy": "strict-origin-when-cross-origin"
+};
+
+function withSecurityHeaders(extraHeaders = {}) {
+  return {
+    ...SECURITY_HEADERS,
+    ...extraHeaders
+  };
+}
+
 function json(res, status, payload, extraHeaders = {}) {
-  res.writeHead(status, {
+  res.writeHead(status, withSecurityHeaders({
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-CSRF-Token",
     "Access-Control-Allow-Credentials": "true",
     ...extraHeaders
-  });
+  }));
   res.end(JSON.stringify(payload, null, 2));
 }
 
@@ -120,12 +135,15 @@ function requireApiAuth(req, res) {
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   const token = match ? match[1] : "";
   const payload = verifyJwt(token, JWT_SECRET);
+
   if (!payload) {
     json(res, 401, { ok: false, error: "Token JWT inválido o expirado." });
     return { ok: false };
   }
+
   const csrfToken = req.headers["x-csrf-token"] || req.headers["x-xsrf-token"] || "";
   const csrfValid = payload.csrf && String(csrfToken) === String(payload.csrf);
+
   if (!csrfValid) {
     json(res, 403, { ok: false, error: "CSRF inválido. Solicita un nuevo token antes de actualizar la API." });
     return { ok: false };
@@ -291,13 +309,13 @@ async function handleApi(req, res, url) {
       exp: Date.now() + JWT_TTL_MS
     };
     const csrfJwt = signJwt(signingPayload, CSRF_SECRET);
-    res.writeHead(200, {
+    res.writeHead(200, withSecurityHeaders({
       "Content-Type": "application/json; charset=utf-8",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization, X-CSRF-Token",
       "Set-Cookie": `csrf_token=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600`
-    });
+    }));
     return res.end(JSON.stringify({ ok: true, data: { token: csrfJwt, csrfToken: token } }, null, 2));
   }
 
@@ -515,7 +533,7 @@ async function serveStatic(req, res, url) {
   try {
     const data = await readFile(filePath);
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { "Content-Type": MIME_TYPES[ext] || "application/octet-stream" });
+    res.writeHead(200, withSecurityHeaders({ "Content-Type": MIME_TYPES[ext] || "application/octet-stream" }));
     res.end(data);
   } catch {
     notFound(res, "Archivo no encontrado.");
