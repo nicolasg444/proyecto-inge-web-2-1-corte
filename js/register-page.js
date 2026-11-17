@@ -52,10 +52,12 @@ registerForm.addEventListener("submit", async event => {
       creadoEn: serverTimestamp(),
       actualizadoEn: serverTimestamp()
     }, { merge: true });
-    await mirrorUserToLocalApi(profile);
     localStorage.setItem("wayture_logged_user", nombre);
     localStorage.setItem("wayture_user_role", rol);
-    await ensureApiSession(cred.user.uid, email, rol);
+    // Primero la sesion de la API: la sincronizacion con la API local ya
+    // exige JWT + CSRF.
+    await ensureApiSession(await cred.user.getIdToken());
+    await mirrorUserToLocalApi(profile);
     registerResponse.textContent = "Cuenta de viajero creada. Redirigiendo a tu panel...";
     setTimeout(() => { window.location.href = "panel-usuario.html#mis-viajes"; }, 900);
   }catch(error){

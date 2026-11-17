@@ -2,3 +2,15 @@
 react-widget/node_modules/
 .env
 .env.*
+
+# Secretos (nunca en Git): los genera scripts/generar-secretos.sh
+secrets/
+.smoke.env
+*.pem
+*.key
+
+# Respaldo JSON local: contiene datos reales de usuarios (emails).
+data/
+
+# Evidencia temporal
+*.log

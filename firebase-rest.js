@@ -1,9 +1,15 @@
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "wayture-37479";
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || "AIzaSyA_6DQ7XCnx1cxbcZhAPZCDfsZhLVG9Mvs";
-const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+// firebase-rest.js
+// Acceso a Firebase por API REST (sin Admin SDK).
+// La clave web y el projectId vienen de config.js: nada fijo en el codigo.
+
+import config from "./config.js";
+
+const FIRESTORE_BASE_URL = `${config.firestoreBaseUrl}/projects/${config.firebaseProjectId}/databases/(default)/documents`;
+// Sin timeout, un Firebase lento dejaria la peticion del usuario colgada.
+const TIMEOUT_MS = 8000;
 
 function firestoreUrl(path) {
-  return `${FIRESTORE_BASE_URL}/${path}?key=${encodeURIComponent(FIREBASE_API_KEY)}`;
+  return `${FIRESTORE_BASE_URL}/${path}?key=${encodeURIComponent(config.firebaseApiKey)}`;
 }
 
 function toFirestoreValue(value) {
@@ -50,11 +56,16 @@ function docToFirestore(data = {}) {
   };
 }
 
-async function requestFirestore(path, options = {}) {
+async function requestFirestore(path, options = {}, idToken = null) {
+  // Con un idToken (del usuario o del usuario "servicio") Firestore aplica sus
+  // reglas de seguridad como ese usuario; sin el, como anonimo.
+  const token = idToken || await obtenerTokenServicio();
   const response = await fetch(firestoreUrl(path), {
     ...options,
+    signal: AbortSignal.timeout(TIMEOUT_MS),
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     }
   });
@@ -73,8 +84,8 @@ export async function listFirebaseCollection(collection) {
   return (payload.documents || []).map(docFromFirestore);
 }
 
-export async function getFirebaseDoc(collection, id) {
-  const payload = await requestFirestore(`${collection}/${encodeURIComponent(id)}`);
+export async function getFirebaseDoc(collection, id, idToken = null) {
+  const payload = await requestFirestore(`${collection}/${encodeURIComponent(id)}`, {}, idToken);
   return docFromFirestore(payload);
 }
 
@@ -89,4 +100,65 @@ export async function setFirebaseDoc(collection, id, data) {
 export async function deleteFirebaseDoc(collection, id) {
   await requestFirestore(`${collection}/${encodeURIComponent(id)}`, { method: "DELETE" });
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Firebase Authentication por REST
+// ---------------------------------------------------------------------------
+
+async function requestAuth(metodo, cuerpo) {
+  const response = await fetch(
+    `${config.firebaseAuthBaseUrl}/accounts:${metodo}?key=${encodeURIComponent(config.firebaseApiKey)}`,
+    {
+      method: "POST",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo)
+    }
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.error?.message || "Firebase Auth rechazo la peticion.");
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
+
+/**
+ * Verifica un idToken de Firebase con accounts:lookup y devuelve
+ * { uid, email, emailVerified }. Firebase solo responde si el token es
+ * autentico, no expiro y pertenece a este proyecto: la identidad sale de
+ * Firebase, nunca de lo que el cliente diga en el cuerpo de la peticion.
+ */
+export async function verificarIdToken(idToken) {
+  const payload = await requestAuth("lookup", { idToken });
+  const usuario = payload.users?.[0];
+  if (!usuario?.localId) throw new Error("idToken sin usuario");
+  return {
+    uid: usuario.localId,
+    email: String(usuario.email || "").toLowerCase(),
+    emailVerified: Boolean(usuario.emailVerified)
+  };
+}
+
+// --- Usuario "servicio" (opcional) -----------------------------------------
+// Permite que el servidor escriba en Firestore cuando las reglas exigen
+// autenticacion, sin Admin SDK: inicia sesion como un usuario normal de
+// Firebase cuyo uid tiene permisos en las reglas (docs/firestore-reglas.md).
+// El token dura 1 h; se renueva 5 min antes de vencer.
+let tokenServicio = null;
+let venceServicio = 0;
+
+async function obtenerTokenServicio() {
+  if (!config.firebaseServiceEmail) return null;
+  if (tokenServicio && Date.now() < venceServicio) return tokenServicio;
+  const payload = await requestAuth("signInWithPassword", {
+    email: config.firebaseServiceEmail,
+    password: config.firebaseServicePassword,
+    returnSecureToken: true
+  });
+  tokenServicio = payload.idToken;
+  venceServicio = Date.now() + (Number(payload.expiresIn || 3600) - 300) * 1000;
+  return tokenServicio;
 }
