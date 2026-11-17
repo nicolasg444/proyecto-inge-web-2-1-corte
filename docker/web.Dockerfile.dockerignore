@@ -1,0 +1,10 @@
+# .dockerignore de la imagen web (Nginx). Lista blanca: solo lo publico.
+# Asi es imposible que .env, .git, secrets/, data/ (JSON con emails) o el
+# codigo del servidor terminen servidos por Nginx.
+*
+!*.html
+!css/
+!js/
+!assets/
+!react-widget/dist/
+!docker/nginx/

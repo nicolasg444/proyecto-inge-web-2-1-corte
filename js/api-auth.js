@@ -35,9 +35,12 @@ async function fetchCsrfToken() {
   return csrf;
 }
 
-async function ensureApiSession(uid, email, rol = "usuario") {
-  const safeEmail = String(email || "").trim();
-  if (!uid && !safeEmail) return null;
+// Crea la sesion de la API a partir del idToken de Firebase
+// (await user.getIdToken()). El servidor lo verifica con Firebase y saca de
+// ahi el uid y el email; el rol lo lee del perfil en Firestore. Antes se
+// enviaban uid/email/rol y el servidor los firmaba sin comprobar nada.
+async function ensureApiSession(idToken) {
+  if (!idToken) return null;
 
   const csrfToken = await fetchCsrfToken();
   const response = await fetch("/api/auth/token", {
@@ -46,7 +49,7 @@ async function ensureApiSession(uid, email, rol = "usuario") {
       "Content-Type": "application/json",
       "X-CSRF-Token": csrfToken
     },
-    body: JSON.stringify({ uid, email: safeEmail, rol, csrfToken })
+    body: JSON.stringify({ idToken, csrfToken })
   });
 
   if (!response.ok) {

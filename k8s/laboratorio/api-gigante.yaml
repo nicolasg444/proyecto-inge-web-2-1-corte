@@ -1,0 +1,59 @@
+# LABORATORIO (se aplica a mano).
+# Deployment que pide 64 CPU por pod: ningun nodo los tiene, asi que el
+# scheduler lo deja en "Pending" con el evento "Insufficient cpu".
+# Demuestra que requests es una RESERVA que el scheduler debe poder cumplir.
+#   kubectl apply -f k8s/laboratorio/api-gigante.yaml
+#   kubectl -n waytur get pods -l app.kubernetes.io/name=api-gigante
+#   kubectl -n waytur describe pod -l app.kubernetes.io/name=api-gigante | grep -A5 Events
+#   kubectl delete -f k8s/laboratorio/api-gigante.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gigante
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: api-gigante
+    app.kubernetes.io/part-of: waytur
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api-gigante
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api-gigante
+        app.kubernetes.io/part-of: waytur
+    spec:
+      # Sin token de ServiceAccount: estas apps no hablan con la API de
+      # Kubernetes, y un token montado es una credencial que un atacante
+      # podria robar. Ademas, el token se monta en /var/run/secrets/... y
+      # chocaria con nuestro volumen de solo lectura en /run/secrets.
+      automountServiceAccountToken: false
+      # Sin variables de "service links": por cada Service, Kubernetes
+      # inyecta variables estilo Docker links (REDIS_PORT=tcp://10.96.x.x:6379)
+      # que pisan nuestra configuracion (REDIS_PORT debe ser "6379"). Los
+      # Services se encuentran por DNS (redis, mysql, api).
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: waytur-api:1.0
+          imagePullPolicy: IfNotPresent
+          command: ["sleep", "3600"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "64"
+              memory: 128Mi
+            limits:
+              cpu: "64"
+              memory: 128Mi

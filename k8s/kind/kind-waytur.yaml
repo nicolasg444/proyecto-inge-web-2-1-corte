@@ -1,0 +1,22 @@
+# Cluster kind: 1 control-plane + 2 workers. NO se aplica con kubectl:
+#   kind create cluster --config k8s/kind/kind-waytur.yaml
+# (subcarpeta porque "kubectl apply -f k8s/" no es recursivo).
+# 2 workers permiten demostrar el reparto de replicas y el drain con PDB.
+# Requiere ~8 GB de RAM para Docker; con menos, deja un solo worker (se
+# pierde la demostracion de reparto entre nodos).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: waytur
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # El Service web es NodePort 30080; kind corre los nodos como
+      # contenedores, asi que hay que publicar ese puerto al anfitrion.
+      # hostPort 8082 y no 8080: el 8080 queda para Compose (y en este
+      # equipo lo ocupa Apache); asi pueden convivir.
+      - containerPort: 30080
+        hostPort: 8082
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+  - role: worker
+  - role: worker

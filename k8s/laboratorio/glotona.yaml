@@ -1,0 +1,54 @@
+# LABORATORIO (se aplica a mano, no con "kubectl apply -f k8s/").
+# Pod que reserva 300 MiB con un limite de 128 MiB: el kernel lo mata y
+# Kubernetes muestra "OOMKilled" (Reason) y reinicios en aumento.
+#   kubectl apply -f k8s/laboratorio/glotona.yaml
+#   kubectl -n waytur get pod glotona -w
+#   kubectl -n waytur describe pod glotona | grep -A3 "Last State"
+#   kubectl -n waytur delete pod glotona
+apiVersion: v1
+kind: Pod
+metadata:
+  name: glotona
+  namespace: waytur
+  labels:
+    app.kubernetes.io/part-of: waytur
+    laboratorio: oom
+spec:
+  # Sin token de ServiceAccount: estas apps no hablan con la API de
+  # Kubernetes, y un token montado es una credencial que un atacante
+  # podria robar. Ademas, el token se monta en /var/run/secrets/... y
+  # chocaria con nuestro volumen de solo lectura en /run/secrets.
+  automountServiceAccountToken: false
+  # Sin variables de "service links": por cada Service, Kubernetes
+  # inyecta variables estilo Docker links (REDIS_PORT=tcp://10.96.x.x:6379)
+  # que pisan nuestra configuracion (REDIS_PORT debe ser "6379"). Los
+  # Services se encuentran por DNS (redis, mysql, api).
+  enableServiceLinks: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: glotona
+      # Reutiliza la imagen de la API (ya cargada en kind, trae Node).
+      image: waytur-api:1.0
+      imagePullPolicy: IfNotPresent
+      command: ["node", "-e"]
+      args:
+        - |
+          console.log("Reservando 300 MiB con un limite de 128 MiB...");
+          const datos = Buffer.alloc(300 * 1024 * 1024, 1);
+          setInterval(() => datos[0]++, 1000);
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          memory: 64Mi
+          cpu: 50m
+        limits:
+          memory: 128Mi
+          cpu: 200m

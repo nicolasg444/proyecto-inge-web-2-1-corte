@@ -1,0 +1,64 @@
+// firestore.rules - PROPUESTA (no publicada). Ver docs/firestore-reglas.md.
+// Probar primero en Consola de Firebase > Firestore > Reglas > "Rules
+// Playground" antes de publicar. Sigue lo que pide el README:
+//   - cada usuario lee/edita su perfil, sin poder cambiarse el rol
+//   - usuarios autenticados crean y editan SUS viajes; admin todo
+//   - la landing puede CREAR contactos y suscripciones; solo admin los ve
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+    function esAdmin() {
+      return autenticado()
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == "admin";
+    }
+    // Usuario "servicio" del servidor Node (docs/firestore-reglas.md).
+    // Reemplazar por su UID real (Authentication > Usuarios).
+    function esServidor() {
+      return autenticado() && request.auth.uid == "REEMPLAZAR_UID_DEL_USUARIO_SERVICIO";
+    }
+    function emailPropio() {
+      return request.auth.token.email;
+    }
+
+    match /usuarios/{uid} {
+      allow read: if autenticado() && (request.auth.uid == uid || esAdmin() || esServidor());
+      // Al registrarse solo se puede crear el propio perfil y con rol "usuario".
+      allow create: if autenticado() && request.auth.uid == uid
+        && request.resource.data.rol == "usuario";
+      // Nadie se cambia su propio rol; un admin si puede.
+      allow update: if (autenticado() && request.auth.uid == uid
+          && request.resource.data.rol == resource.data.rol)
+        || esAdmin();
+      allow delete: if esAdmin();
+    }
+
+    match /viajes/{id} {
+      // Lectura publica: el rastreo por codigo funciona sin sesion
+      // (js/tracking-page.js). Ver el compromiso en docs/firestore-reglas.md.
+      allow read: if true;
+      allow create: if esAdmin() || esServidor()
+        || (autenticado() && request.resource.data.userEmail == emailPropio());
+      allow update, delete: if esAdmin() || esServidor()
+        || (autenticado() && resource.data.userEmail == emailPropio());
+    }
+
+    match /destinosRecomendados/{id} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    match /contactos/{id} {
+      allow create: if true;
+      allow read, update, delete: if esAdmin();
+    }
+
+    match /suscripciones/{id} {
+      allow create: if true;
+      allow read, update, delete: if esAdmin();
+    }
+  }
+}

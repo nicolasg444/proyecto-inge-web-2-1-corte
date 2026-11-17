@@ -1,0 +1,12 @@
+# Namespace propio: aisla nombres y se borra todo de una vez.
+# 00: "kubectl apply -f k8s/" aplica en orden alfabetico; va primero.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: waytur
+  labels:
+    app.kubernetes.io/part-of: waytur
+    # Pod Security Admission "restricted": el API server RECHAZA pods que
+    # pidan root, escalada de privilegios o capabilities.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

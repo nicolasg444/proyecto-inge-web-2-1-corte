@@ -379,11 +379,21 @@ No hay build. Para la parte visual puede usarse Live Server, y para la actividad
 
 ### Opción API REST + Postman
 
-Desde la carpeta del proyecto:
+Desde la carpeta del proyecto (la primera vez genera los secretos; ver
+[DECISIONES.md](DECISIONES.md)):
 
 ```bash
+bash scripts/generar-secretos.sh   # crea secrets/ (no se versiona)
+cp .env.example .env               # configuracion no secreta
 npm start
+npm test                           # pruebas (no necesitan internet)
 ```
+
+> La API exige **JWT + CSRF** en las escrituras y JWT en las lecturas (salvo
+> `/api/health`, `/api/rastreo/:codigo`, `/health` y `/quien`). El JWT se
+> obtiene con el **idToken de Firebase**: `GET /api/auth/csrf` ->
+> `POST /api/auth/token {idToken, csrfToken}`. `/api/usuarios` y
+> `/api/viajeros/ubicaciones` son solo para admin.
 
 Luego abre:
 
@@ -426,11 +436,12 @@ GET /api/health
 
 debe aparecer `database: "firebase"` cuando la conexión está activa. Si aparece `database: "local-fallback"`, el servidor no pudo llegar a Firebase y usa temporalmente el respaldo local.
 
-El respaldo local guarda datos en:
+El respaldo local guarda datos en `data/wayture-api.json` (o en `DATA_DIR`).
+Ese archivo **ya no se versiona**: contenia emails reales.
 
-```text
-data/wayture-api.json
-```
+> Importante: Firestore rechaza las escrituras anonimas del servidor, asi que
+> hasta configurar el usuario "servicio" las escrituras de la API solo quedan
+> en el respaldo local. Ver [docs/firestore-reglas.md](docs/firestore-reglas.md).
 
 ### Opción recomendada: Live Server
 
@@ -442,6 +453,57 @@ data/wayture-api.json
 ### Opción alternativa
 
 Abrir `index.html` directamente puede funcionar para partes visuales, pero Firebase y módulos ES pueden requerir servidor local según el navegador. Por eso se recomienda Live Server.
+
+## Contenedores: Docker, Compose y Kubernetes
+
+Requisitos: Docker Engine 24+ (o Docker Desktop), Compose v2, kubectl, kind
+y Node 22+ (para el smoke test). Scripts en bash: Linux, WSL o Git Bash.
+
+### Docker Compose (desde un clon limpio)
+
+```bash
+git clone <url-del-repo> && cd WayTure
+bash scripts/generar-secretos.sh     # secretos + API key web desde js/firebase-config.js
+docker compose -f compose.yaml up -d --build --wait
+BASE_URL=http://localhost:8080 node scripts/smoke-jwt.mjs
+```
+
+- Web: <http://localhost:8080> (Nginx). API: `/api/...`, `/health`, `/quien`.
+- Puerto ocupado (Apache/XAMPP): `WEB_PORT=8086 docker compose -f compose.yaml up -d --build --wait`.
+- `USE_FIREBASE_REST=false` = modo local (solo JSON de respaldo, sin tocar Firestore).
+- Desarrollo con recarga: `docker compose up -d --build` (aplica `compose.override.yaml`).
+
+### Kubernetes (kind)
+
+```bash
+bash scripts/k8s-up.sh                      # cluster + imagenes + Secret + kubectl apply -f k8s/
+BASE_URL=http://localhost:8082 node scripts/smoke-jwt.mjs
+bash scripts/k8s-rolling.sh 1.1             # rolling update con vigia (cuenta FALLO)
+bash scripts/k8s-rolling.sh undo            # rollback
+```
+
+Web en <http://localhost:8082>. Mas comandos (balanceo, drain, QoS,
+laboratorio OOMKilled/Pending) en [DECISIONES.md](DECISIONES.md) y
+[k8s/laboratorio/README.md](k8s/laboratorio/README.md).
+
+### Smoke test, medicion y evidencia
+
+- `node scripts/smoke-jwt.mjs`: CSRF, 401/403, JWT alterado/`none`/expirado,
+  XSS como texto, cabeceras, archivos internos, cache. Sin `.smoke.env`
+  (`SMOKE_EMAIL`, `SMOKE_PASSWORD`) crea un usuario desechable en Firebase
+  Auth y lo borra al final.
+- `bash scripts/medir-imagenes.sh`: imagen ingenua vs optimizada.
+- `bash scripts/evidencia.sh`: guarda la evidencia en `docs/evidencia/` (sin secretos).
+
+### Limpieza
+
+| Comando | Borra | Conserva |
+|---|---|---|
+| `docker compose -f compose.yaml down` | contenedores y redes | volumenes `waytur-data` (respaldo JSON) y `redis-data` |
+| `docker compose -f compose.yaml down -v` | lo anterior **y los volumenes** (se pierde el respaldo JSON; Firestore no se toca) | imagenes |
+| `bash scripts/k8s-down.sh` | el cluster kind entero | imagenes, `secrets/` |
+
+Arquitectura en Azure: [docs/arquitectura-azure.md](docs/arquitectura-azure.md).
 
 ## Tecnologías utilizadas
 

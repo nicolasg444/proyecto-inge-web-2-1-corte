@@ -46,7 +46,7 @@ loginForm.addEventListener("submit", async event => {
     }
     localStorage.setItem("wayture_logged_user", nombre);
     localStorage.setItem("wayture_user_role", rol);
-    await ensureApiSession(user.uid, user.email || email, rol);
+    await ensureApiSession(await user.getIdToken());
     const isAdmin = rol === "admin";
     welcomeBox.textContent = `Bienvenido, ${nombre}. Rol: ${rol}. Redirigiendo...`;
     setTimeout(() => { window.location.href = isAdmin ? "admin-viajes.html#panel" : "panel-usuario.html#mis-viajes"; }, 900);

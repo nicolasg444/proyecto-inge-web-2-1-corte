@@ -1,0 +1,78 @@
+# smoke-jwt.mjs contra http://localhost:8086 (compose)
+# Generado: 2026-11-17 01:13:02
+
+Smoke test de seguridad contra http://localhost:8086
+
+1. Endpoints publicos y CSRF
+  ✔ GET /health -> 200 {"estado":"ok"}
+  ✔ GET /quien; pods distintos en 12 llamadas: 1
+    b303f280d595 (v1.0)
+  ✔ GET /api/auth/csrf devuelve token y csrfToken
+  ✔ cada llamada entrega valores distintos
+
+2. Sin credenciales
+  ✔ POST /api/viajes sin token -> 401
+  ✔ POST /api/auth/token con uid/rol inventados (flujo antiguo) -> 400
+  ✔ POST /api/auth/token con idToken falso -> 401
+
+3. Flujo completo: Firebase -> csrf -> token -> POST /api/viajes
+  ✔ usuario desechable creado en Firebase Auth (se borra al final)
+  ✔ POST /api/auth/token con idToken real -> 200 + JWT
+  ✔ rol tomado del perfil (no del cliente): usuario
+  ✔ POST /api/viajes con Authorization + X-CSRF-Token -> 201
+
+4. CSRF
+  ✔ X-CSRF-Token distinto del claim csrf del JWT -> 403
+  ✔ sin X-CSRF-Token -> 403
+
+5. JWT manipulados
+  ✔ firma alterada -> 401
+  ✔ payload con rol admin y firma original -> 401
+  ✔ alg "none" -> 401
+  ✔ token del endpoint CSRF usado como sesion -> 401
+
+6. JWT expirado
+  ✔ token bien firmado pero vencido -> 401
+
+7. XSS: el payload se guarda y vuelve como texto
+  ✔ nombreViaje vuelve literal (no se interpreta)
+  ✔ Content-Type: application/json
+  ✔ X-Content-Type-Options: nosniff
+  ✔ tracking-map.js escapa con escHtml() en bindPopup/bindTooltip
+
+8. Cabeceras de seguridad (HTML via Nginx y API)
+  ✔ HTML /: CSP con los origenes permitidos
+  ✔ HTML /: una sola CSP (sin duplicar)
+  ✔ HTML /: X-Content-Type-Options
+  ✔ HTML /: X-Frame-Options sin duplicar
+  ✔ HTML /: Server sin version
+  ✔ API /api/viajes: CSP con los origenes permitidos
+  ✔ API /api/viajes: una sola CSP (sin duplicar)
+  ✔ API /api/viajes: X-Content-Type-Options
+  ✔ API /api/viajes: X-Frame-Options sin duplicar
+  ✔ API /api/viajes: Server sin version
+  ✔ API /health: CSP con los origenes permitidos
+  ✔ API /health: una sola CSP (sin duplicar)
+  ✔ API /health: X-Content-Type-Options
+  ✔ API /health: X-Frame-Options sin duplicar
+  ✔ API /health: Server sin version
+
+9. Autorizacion y archivos internos
+  ✔ GET /api/usuarios como usuario normal -> 403
+  ✔ /.env no se sirve -> 404
+  ✔ /.git/config no se sirve -> 404
+  ✔ /data/wayture-api.json no se sirve -> 404
+  ✔ /server.js no se sirve -> 404
+  ✔ /package.json no se sirve -> 404
+
+10. Cache Redis
+  ✔ listado: HIT -> HIT (segunda lectura desde Redis)
+  ✔ PATCH /api/viajes/:id/estado -> 200
+  ✔ la escritura invalida la cache (siguiente lectura MISS)
+
+11. Limpieza
+  ✔ DELETE /api/viajes/wt-smoke-201b92
+  ✔ DELETE /api/viajes/wt-smoke-201b92-x
+  ✔ usuario desechable borrado de Firebase Auth
+
+Resultado: TODO EN VERDE
