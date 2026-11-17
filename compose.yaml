@@ -1,0 +1,179 @@
+# compose.yaml - WayTure completo: redis + api + web.
+#
+# Produccion local (sin el override de desarrollo):
+#   docker compose -f compose.yaml up -d --build
+# Desarrollo (aplica compose.override.yaml automaticamente):
+#   docker compose up -d --build
+#
+# Sin clave "version": esta obsoleta en Compose v2.
+# La base de datos sigue siendo Firebase (servicio externo): no hay
+# contenedor de base de datos.
+
+# Prefijo de contenedores, redes y volumenes.
+name: waytur
+
+services:
+
+  redis:
+    # Version fija. Solo cache: si se pierde, la API lee de Firestore.
+    image: redis:7.4.6-alpine
+    # La contrasena se lee del secreto al arrancar ("$$" = "$" para el shell
+    # del contenedor, no para Compose): no aparece en docker inspect.
+    # "exec": redis-server queda como PID 1 y recibe SIGTERM.
+    command:
+      - sh
+      - -c
+      - exec redis-server --requirepass "$$(cat /run/secrets/redis_password)"
+    secrets:
+      - redis_password
+    volumes:
+      - redis-data:/data
+    # SOLO backend: ni la web ni el anfitrion llegan a Redis. Sin "ports".
+    networks:
+      - backend
+    healthcheck:
+      # PING autenticado: un Redis sin contrasena no pasaria.
+      # REDISCLI_AUTH evita pasar la clave como argumento visible.
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$(cat /run/secrets/redis_password)" redis-cli ping | grep -q PONG
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # UID 999 / GID 1000 (usuario redis de la imagen) desde el arranque: el
+    # entrypoint oficial solo baja de root cuando el comando empieza por
+    # "redis-server", y aqui se usa "sh -c".
+    user: "999:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      # Solo la etapa final: sin pruebas ni herramientas de desarrollo.
+      target: runtime
+      args:
+        APP_VERSION: ${APP_VERSION:-1.0}
+    image: waytur-api:${APP_VERSION:-1.0}
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # --- Configuracion NO secreta (visible en docker inspect) ---
+      PORT: "8000"
+      DATA_DIR: /data
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-wayture-37479}
+      # false = modo local (solo JSON de respaldo), util para pruebas.
+      USE_FIREBASE_REST: ${USE_FIREBASE_REST:-true}
+      API_AUTH_ENABLED: ${API_AUTH_ENABLED:-true}
+      REDIS_HOST: redis
+      CACHE_TTL: ${CACHE_TTL:-30}
+      APP_VERSION: ${APP_VERSION:-1.0}
+      # --- Secretos: solo la RUTA al archivo, nunca el valor ---
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      CSRF_SECRET_FILE: /run/secrets/csrf_secret
+      FIREBASE_API_KEY_FILE: /run/secrets/firebase_api_key
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+      FIREBASE_SERVICE_EMAIL_FILE: /run/secrets/firebase_service_email
+      FIREBASE_SERVICE_PASSWORD_FILE: /run/secrets/firebase_service_password
+    secrets:
+      - jwt_secret
+      - csrf_secret
+      - firebase_api_key
+      - redis_password
+      - firebase_service_email
+      - firebase_service_password
+    volumes:
+      # Respaldo JSON (MODO DEGRADADO: solo se usa si Firestore no responde;
+      # no se sincroniza de vuelta con Firestore). Volumen nombrado porque la
+      # raiz del contenedor es de solo lectura.
+      - waytur-data:/data
+    # backend: habla con Redis. frontend: la web la alcanza por aqui y, como
+    # backend es "internal" (sin salida), esta red le da la salida a internet
+    # que necesita para hablar con Firebase.
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    # Raiz de solo lectura: si explotan la app no pueden dejar binarios ni
+    # modificar codigo. /tmp en RAM por si alguna libreria lo necesita.
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Sin capabilities de Linux: un servidor en el puerto 8000 no necesita
+    # ninguna.
+    cap_drop:
+      - ALL
+    # Sin escalada de privilegios via binarios setuid.
+    security_opt:
+      - "no-new-privileges:true"
+    restart: unless-stopped
+    # Sin "ports": solo se entra por Nginx.
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    image: waytur-web:1.0
+    depends_on:
+      api:
+        condition: service_healthy
+    # El UNICO puerto publicado. WEB_PORT permite moverlo si el 8080 del
+    # anfitrion esta ocupado (p. ej. Apache/XAMPP).
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    networks:
+      - frontend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/salud-web"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    # nginx-unprivileged guarda pid y temporales en /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    restart: unless-stopped
+
+networks:
+  # Entrada y salida a internet: web <-> api, api -> Firebase.
+  frontend: {}
+  # Datos: internal = sin acceso a/desde fuera de Docker.
+  backend:
+    internal: true
+
+volumes:
+  waytur-data: {}
+  redis-data: {}
+
+# Archivos montados en /run/secrets/<nombre> (solo lectura). NO son
+# variables de entorno: no aparecen en docker inspect ni en los logs.
+# Se generan con scripts/generar-secretos.sh; secrets/ esta en .gitignore.
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  csrf_secret:
+    file: ./secrets/csrf_secret.txt
+  firebase_api_key:
+    file: ./secrets/firebase_api_key.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  # Opcionales (vacios = no configurado). Ver docs/firestore-reglas.md.
+  firebase_service_email:
+    file: ./secrets/firebase_service_email.txt
+  firebase_service_password:
+    file: ./secrets/firebase_service_password.txt
