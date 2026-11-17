@@ -1,0 +1,6 @@
+# MATERIAL DE LABORATORIO: casi vacio a proposito (muestra el costo de no
+# filtrar el contexto). Solo se excluyen credenciales y datos REALES.
+.env
+secrets/
+.smoke.env
+data/

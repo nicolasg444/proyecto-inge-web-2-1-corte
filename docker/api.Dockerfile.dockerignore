@@ -1,0 +1,19 @@
+# .dockerignore de la imagen de la API (BuildKit lo usa en lugar del
+# .dockerignore de la raiz cuando se construye con -f docker/api.Dockerfile).
+# Regla: lista blanca. Se excluye TODO y se permite solo lo que la API usa.
+*
+!package.json
+!package-lock.json
+!config.js
+!cache.js
+!firebase-rest.js
+!server.js
+!js/
+# Para la etapa de pruebas: tests y los estaticos que verifica.
+!tests/
+!index.html
+# Aunque esten dentro de rutas permitidas, nunca:
+**/.env
+**/.env.*
+**/*.pem
+**/node_modules
