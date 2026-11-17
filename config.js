@@ -32,7 +32,8 @@ export function leerSecreto(nombre, { minLargo = 1, opcional = false } = {}) {
       // trim(): quita el salto de linea final que dejan editores y "echo".
       valor = readFileSync(ruta, "utf8").trim();
     } catch (error) {
-      throw new ErrorConfiguracion(`No se pudo leer ${nombre}_FILE (${error.code})`);
+      // Un secreto opcional puede no existir; uno obligatorio no.
+      if (!opcional) throw new ErrorConfiguracion(`No se pudo leer ${nombre}_FILE (${error.code})`);
     }
   } else {
     valor = String(process.env[nombre] || "").trim();
