@@ -1,39 +1,40 @@
 # kubectl get deploy,rs,pods,svc,pdb -o wide
-# Generado: 2026-11-17 01:05:57
+# Generado: 2026-11-17 01:13:01
 
-NAME                    READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES               SELECTOR
-deployment.apps/api     3/3     3            3           8m16s   api          waytur-api:1.1       app.kubernetes.io/name=api
-deployment.apps/redis   1/1     1            1           8m16s   redis        redis:7.4.6-alpine   app.kubernetes.io/name=redis
-deployment.apps/web     2/2     2            2           8m16s   web          waytur-web:1.0       app.kubernetes.io/name=web
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES               SELECTOR
+deployment.apps/api     3/3     3            3           15m   api          waytur-api:1.0       app.kubernetes.io/name=api
+deployment.apps/redis   1/1     1            1           15m   redis        redis:7.4.6-alpine   app.kubernetes.io/name=redis
+deployment.apps/web     2/2     2            2           15m   web          waytur-web:1.0       app.kubernetes.io/name=web
 
-NAME                               DESIRED   CURRENT   READY   AGE     CONTAINERS   IMAGES               SELECTOR
-replicaset.apps/api-549c7684d7     3         3         3       7m29s   api          waytur-api:1.1       app.kubernetes.io/name=api,pod-template-hash=549c7684d7
-replicaset.apps/api-5b68658cc8     0         0         0       8m15s   api          waytur-api:1.0       app.kubernetes.io/name=api,pod-template-hash=5b68658cc8
-replicaset.apps/api-84c8944cf      0         0         0       8m16s   api          waytur-api:1.0       app.kubernetes.io/name=api,pod-template-hash=84c8944cf
-replicaset.apps/redis-86b6c544fd   1         1         1       8m16s   redis        redis:7.4.6-alpine   app.kubernetes.io/name=redis,pod-template-hash=86b6c544fd
-replicaset.apps/web-68588d64f4     2         2         2       8m16s   web          waytur-web:1.0       app.kubernetes.io/name=web,pod-template-hash=68588d64f4
+NAME                               DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES               SELECTOR
+replicaset.apps/api-549c7684d7     0         0         0       14m   api          waytur-api:1.1       app.kubernetes.io/name=api,pod-template-hash=549c7684d7
+replicaset.apps/api-5b68658cc8     0         0         0       15m   api          waytur-api:1.0       app.kubernetes.io/name=api,pod-template-hash=5b68658cc8
+replicaset.apps/api-7d88dbdc97     3         3         3       97s   api          waytur-api:1.0       app.kubernetes.io/name=api,pod-template-hash=7d88dbdc97
+replicaset.apps/api-84c8944cf      0         0         0       15m   api          waytur-api:1.0       app.kubernetes.io/name=api,pod-template-hash=84c8944cf
+replicaset.apps/redis-86b6c544fd   1         1         1       15m   redis        redis:7.4.6-alpine   app.kubernetes.io/name=redis,pod-template-hash=86b6c544fd
+replicaset.apps/web-68588d64f4     2         2         2       15m   web          waytur-web:1.0       app.kubernetes.io/name=web,pod-template-hash=68588d64f4
 
-NAME                         READY   STATUS    RESTARTS   AGE     IP            NODE             NOMINATED NODE   READINESS GATES
-pod/api-549c7684d7-8xb79     1/1     Running   0          5m21s   10.244.1.17   waytur-worker2   <none>           <none>
-pod/api-549c7684d7-9gcmf     1/1     Running   0          5m52s   10.244.1.14   waytur-worker2   <none>           <none>
-pod/api-549c7684d7-nn9g4     1/1     Running   0          5m26s   10.244.1.16   waytur-worker2   <none>           <none>
-pod/redis-86b6c544fd-jstd4   1/1     Running   0          8m16s   10.244.1.2    waytur-worker2   <none>           <none>
-pod/web-68588d64f4-kms25     1/1     Running   0          8m16s   10.244.1.5    waytur-worker2   <none>           <none>
-pod/web-68588d64f4-pkdrm     1/1     Running   0          5m26s   10.244.1.15   waytur-worker2   <none>           <none>
+NAME                         READY   STATUS    RESTARTS   AGE   IP            NODE             NOMINATED NODE   READINESS GATES
+pod/api-7d88dbdc97-g8pdt     1/1     Running   0          97s   10.244.2.16   waytur-worker    <none>           <none>
+pod/api-7d88dbdc97-srjxz     1/1     Running   0          93s   10.244.1.18   waytur-worker2   <none>           <none>
+pod/api-7d88dbdc97-tqr5q     1/1     Running   0          90s   10.244.2.17   waytur-worker    <none>           <none>
+pod/redis-86b6c544fd-jstd4   1/1     Running   0          15m   10.244.1.2    waytur-worker2   <none>           <none>
+pod/web-68588d64f4-kms25     1/1     Running   0          15m   10.244.1.5    waytur-worker2   <none>           <none>
+pod/web-68588d64f4-pkdrm     1/1     Running   0          12m   10.244.1.15   waytur-worker2   <none>           <none>
 
-NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE     SELECTOR
-service/api     ClusterIP   10.96.12.40     <none>        8000/TCP         8m16s   app.kubernetes.io/name=api
-service/redis   ClusterIP   10.96.225.206   <none>        6379/TCP         8m16s   app.kubernetes.io/name=redis
-service/web     NodePort    10.96.131.79    <none>        8080:30080/TCP   8m16s   app.kubernetes.io/name=web
+NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE   SELECTOR
+service/api     ClusterIP   10.96.12.40     <none>        8000/TCP         15m   app.kubernetes.io/name=api
+service/redis   ClusterIP   10.96.225.206   <none>        6379/TCP         15m   app.kubernetes.io/name=redis
+service/web     NodePort    10.96.131.79    <none>        8080:30080/TCP   15m   app.kubernetes.io/name=web
 
 NAME                             MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
-poddisruptionbudget.policy/api   2               N/A               1                     8m16s
+poddisruptionbudget.policy/api   2               N/A               1                     15m
 
 ## Clase QoS por pod
 POD                      QOS         NODO
-api-549c7684d7-8xb79     Burstable   waytur-worker2
-api-549c7684d7-9gcmf     Burstable   waytur-worker2
-api-549c7684d7-nn9g4     Burstable   waytur-worker2
+api-7d88dbdc97-g8pdt     Burstable   waytur-worker
+api-7d88dbdc97-srjxz     Burstable   waytur-worker2
+api-7d88dbdc97-tqr5q     Burstable   waytur-worker
 redis-86b6c544fd-jstd4   Burstable   waytur-worker2
 web-68588d64f4-kms25     Burstable   waytur-worker2
 web-68588d64f4-pkdrm     Burstable   waytur-worker2
@@ -42,8 +43,9 @@ web-68588d64f4-pkdrm     Burstable   waytur-worker2
 deployment.apps/api 
 REVISION  CHANGE-CAUSE
 1         <none>
-6         <none>
 7         <none>
+8         <none>
+9         <none>
 
 
 ## Secret: describe muestra solo claves y tamanos, nunca valores

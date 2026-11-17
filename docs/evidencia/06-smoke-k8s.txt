@@ -1,12 +1,12 @@
 # smoke-jwt.mjs contra http://localhost:8082 (k8s)
-# Generado: 2026-11-17 01:06:06
+# Generado: 2026-11-17 01:13:10
 
 Smoke test de seguridad contra http://localhost:8082
 
 1. Endpoints publicos y CSRF
   ✔ GET /health -> 200 {"estado":"ok"}
   ✔ GET /quien; pods distintos en 12 llamadas: 3
-    api-549c7684d7-9gcmf (v1.1), api-549c7684d7-nn9g4 (v1.1), api-549c7684d7-8xb79 (v1.1)
+    api-7d88dbdc97-srjxz (v1.0), api-7d88dbdc97-g8pdt (v1.0), api-7d88dbdc97-tqr5q (v1.0)
   ✔ GET /api/auth/csrf devuelve token y csrfToken
   ✔ cada llamada entrega valores distintos
 
@@ -35,7 +35,7 @@ Smoke test de seguridad contra http://localhost:8082
   ✔ token bien firmado pero vencido -> 401
 
 7. XSS: el payload se guarda y vuelve como texto
-  ✘ nombreViaje vuelve literal (no se interpreta) 
+  ✔ nombreViaje vuelve literal (no se interpreta)
   ✔ Content-Type: application/json
   ✔ X-Content-Type-Options: nosniff
   ✔ tracking-map.js escapa con escHtml() en bindPopup/bindTooltip
@@ -66,11 +66,13 @@ Smoke test de seguridad contra http://localhost:8082
   ✔ /package.json no se sirve -> 404
 
 10. Cache Redis
-  - OMITIDA: cache no activa (X-Cache: MISS -> MISS)
+  ✔ listado: HIT -> HIT (segunda lectura desde Redis)
+  ✘ PATCH /api/viajes/:id/estado -> 200 
+  ✘ la escritura invalida la cache (siguiente lectura MISS) 
 
 11. Limpieza
-  ✘ DELETE /api/viajes/wt-smoke-497e21 
-  ✔ DELETE /api/viajes/wt-smoke-497e21-x
+  ✘ DELETE /api/viajes/wt-smoke-f9f6a9 
+  ✘ DELETE /api/viajes/wt-smoke-f9f6a9-x 
   ✔ usuario desechable borrado de Firebase Auth
 
-Resultado: 2 FALLO(S) (1 omitida(s))
+Resultado: 4 FALLO(S)

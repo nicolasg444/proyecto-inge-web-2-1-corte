@@ -19,5 +19,8 @@
   "license": "MIT",
   "engines": {
     "node": ">=22.9"
+  },
+  "dependencies": {
+    "redis": "5.10.0"
   }
 }

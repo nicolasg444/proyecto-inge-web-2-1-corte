@@ -1,12 +1,12 @@
 # smoke-jwt.mjs contra http://localhost:8086 (compose)
-# Generado: 2026-11-17 01:05:58
+# Generado: 2026-11-17 01:13:02
 
 Smoke test de seguridad contra http://localhost:8086
 
 1. Endpoints publicos y CSRF
   ✔ GET /health -> 200 {"estado":"ok"}
   ✔ GET /quien; pods distintos en 12 llamadas: 1
-    d1165374607c (v1.0)
+    b303f280d595 (v1.0)
   ✔ GET /api/auth/csrf devuelve token y csrfToken
   ✔ cada llamada entrega valores distintos
 
@@ -66,11 +66,13 @@ Smoke test de seguridad contra http://localhost:8086
   ✔ /package.json no se sirve -> 404
 
 10. Cache Redis
-  - OMITIDA: cache no activa (X-Cache: MISS -> MISS)
+  ✔ listado: HIT -> HIT (segunda lectura desde Redis)
+  ✔ PATCH /api/viajes/:id/estado -> 200
+  ✔ la escritura invalida la cache (siguiente lectura MISS)
 
 11. Limpieza
-  ✔ DELETE /api/viajes/wt-smoke-ab103a
-  ✔ DELETE /api/viajes/wt-smoke-ab103a-x
+  ✔ DELETE /api/viajes/wt-smoke-201b92
+  ✔ DELETE /api/viajes/wt-smoke-201b92-x
   ✔ usuario desechable borrado de Firebase Auth
 
-Resultado: TODO EN VERDE (1 omitida(s))
+Resultado: TODO EN VERDE

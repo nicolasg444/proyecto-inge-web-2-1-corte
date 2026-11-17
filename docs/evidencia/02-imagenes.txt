@@ -1,9 +1,9 @@
 # docker image ls (imagenes del proyecto)
-# Generado: 2026-11-17 01:05:00
+# Generado: 2026-11-17 01:11:53
 
 REPOSITORY:TAG                            SIZE      CREATED
-waytur-api:1.1                            229MB     7 minutes ago
-waytur-api:ingenua                        1.99GB    12 minutes ago
-waytur-web:1.0                            134MB     13 minutes ago
-waytur-api:1.0                            229MB     13 minutes ago
-waytur-api:test                           233MB     13 minutes ago
+waytur-api:1.1                            241MB     About a minute ago
+waytur-api:1.0                            241MB     2 minutes ago
+waytur-api:ingenua                        1.99GB    6 minutes ago
+waytur-web:1.0                            134MB     20 minutes ago
+waytur-api:test                           233MB     20 minutes ago
