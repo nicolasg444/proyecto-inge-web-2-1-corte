@@ -1,0 +1,112 @@
+# Redis como cache EFIMERA: 1 replica, sin persistencia (--save "" y sin
+# AOF, datos en emptyDir).
+# Por que sin persistencia: solo guarda una copia del listado de viajes con
+# TTL de 30 s. Si el pod se reinicia, la cache se vacia y la API lee de
+# Firestore (la fuente de verdad) hasta recalentarla. Persistirla costaria
+# un volumen y escrituras a disco a cambio de nada.
+# En Azure: Azure Cache for Redis.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/part-of: waytur
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/part-of: waytur
+    app.kubernetes.io/component: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+        app.kubernetes.io/part-of: waytur
+        app.kubernetes.io/component: cache
+    spec:
+      # Sin token de ServiceAccount: Redis no habla con la API de Kubernetes;
+      # ademas el token se monta en /var/run/secrets/... y chocaria con el
+      # volumen de solo lectura en /run/secrets.
+      automountServiceAccountToken: false
+      # Sin variables "service links" (REDIS_PORT=tcp://...): estorban.
+      enableServiceLinks: false
+      # Usuario redis de la imagen (UID 999, GID 1000) desde el arranque:
+      # el entrypoint oficial solo baja de root si el comando empieza por
+      # "redis-server", y aqui se usa "sh -c".
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:7.4.6-alpine
+          imagePullPolicy: IfNotPresent
+          # Contrasena desde el Secret montado como ARCHIVO: no aparece en el
+          # manifiesto ni en "kubectl describe".
+          command: ["sh", "-c"]
+          args:
+            - exec redis-server --requirepass "$(cat /run/secrets/redis_password)" --save "" --appendonly no
+          ports:
+            - name: redis
+              containerPort: 6379
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          # PING autenticado (REDISCLI_AUTH evita la clave como argumento).
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "REDISCLI_AUTH=\"$(cat /run/secrets/redis_password)\" redis-cli ping | grep -q PONG"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "REDISCLI_AUTH=\"$(cat /run/secrets/redis_password)\" redis-cli ping | grep -q PONG"]
+            periodSeconds: 15
+          volumeMounts:
+            - name: secretos
+              mountPath: /run/secrets
+              readOnly: true
+            - name: datos
+              mountPath: /data
+      volumes:
+        - name: secretos
+          secret:
+            secretName: waytur-secretos
+            # Solo la clave que usa Redis (minimo privilegio).
+            items:
+              - key: redis_password
+                path: redis_password
+            defaultMode: 0440
+        - name: datos
+          emptyDir: {}

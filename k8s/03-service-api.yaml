@@ -1,0 +1,21 @@
+# Service de la API: nombre DNS e IP estables ("api") delante de las 3
+# replicas. ClusterIP: solo dentro del cluster; desde fuera se entra por la
+# web (Nginx). Se llama "api" como el servicio de Compose para que
+# docker/nginx/proxy-api.conf (proxy_pass http://api:8000) sirva en ambos.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: waytur
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: api
+  ports:
+    - name: http
+      port: 8000
+      # Por nombre: si cambia el puerto del contenedor, el Service no se toca.
+      targetPort: http

@@ -1,0 +1,20 @@
+# Valores por defecto de requests/limits para contenedores del namespace
+# que no los declaren (p. ej. un pod de depuracion lanzado a mano).
+# Solo afecta a pods creados DESPUES de existir; todos los manifiestos de
+# k8s/ declaran sus recursos, asi que su numero (05) no cambia nada.
+# Sin "max" a proposito: el laboratorio api-gigante debe quedar Pending
+# (con "max" seria rechazado al crearlo).
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: valores-por-defecto
+  namespace: waytur
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        cpu: 500m
+        memory: 256Mi

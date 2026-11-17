@@ -1,0 +1,31 @@
+# EXTRA OPCIONAL (se aplica a mano): escalado automatico de la API.
+# Requiere metrics-server, que kind NO trae:
+#   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.8.0/components.yaml
+#   kubectl -n kube-system patch deploy metrics-server --type=json \
+#     -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+# (--kubelet-insecure-tls solo en kind: sus kubelets usan certificados
+# autofirmados. Nunca en produccion.)
+#   kubectl apply -f k8s/extras/hpa-api.yaml
+#   kubectl -n waytur get hpa -w
+# Sin metrics-server el HPA muestra "<unknown>" y no escala.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+  namespace: waytur
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  # Nunca menos de 3: el PDB (minAvailable 2) necesita margen.
+  minReplicas: 3
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          # 70 % del request de CPU (100m) en promedio.
+          averageUtilization: 70

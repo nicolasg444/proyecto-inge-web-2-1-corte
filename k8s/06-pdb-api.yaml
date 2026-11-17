@@ -1,0 +1,19 @@
+# PodDisruptionBudget: en interrupciones VOLUNTARIAS (kubectl drain,
+# actualizacion de nodos en AKS) no se desaloja un pod de la API si
+# quedarian menos de 2 disponibles: con 3 replicas se desaloja de a uno y
+# se espera a que el reemplazo este listo.
+# No protege de fallos involuntarios (un nodo que cae): para eso estan las
+# replicas repartidas entre nodos.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: waytur
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api

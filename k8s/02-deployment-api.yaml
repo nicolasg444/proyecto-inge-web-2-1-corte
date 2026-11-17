@@ -1,0 +1,192 @@
+# API WayTure: 3 replicas sin estado.
+# Se puede escalar porque nada vive en memoria del pod: el JWT y el CSRF se
+# verifican con JWT_SECRET (identico en todas las replicas: sale del mismo
+# Secret), los datos estan en Firebase y la cache en Redis.
+---
+# Configuracion NO secreta (los secretos van en el Secret waytur-secretos,
+# que crea scripts/k8s-up.sh; nunca en un manifiesto).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: waytur
+data:
+  PORT: "8000"
+  DATA_DIR: /data
+  FIREBASE_PROJECT_ID: wayture-37479
+  # "false" = modo local con el JSON de respaldo (sin Firestore).
+  USE_FIREBASE_REST: "true"
+  API_AUTH_ENABLED: "true"
+  REDIS_HOST: redis
+  CACHE_TTL: "30"
+  # Solo rutas de archivo: los valores estan en el volumen del Secret.
+  JWT_SECRET_FILE: /run/secrets/jwt_secret
+  CSRF_SECRET_FILE: /run/secrets/csrf_secret
+  FIREBASE_API_KEY_FILE: /run/secrets/firebase_api_key
+  REDIS_PASSWORD_FILE: /run/secrets/redis_password
+  FIREBASE_SERVICE_EMAIL_FILE: /run/secrets/firebase_service_email
+  FIREBASE_SERVICE_PASSWORD_FILE: /run/secrets/firebase_service_password
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: waytur
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 3
+  # Versiones guardadas para "kubectl rollout undo".
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Nunca menos de 3 pods listos durante una actualizacion...
+      maxUnavailable: 0
+      # ...creando de a 1 pod nuevo extra (4 como maximo temporal).
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api
+        app.kubernetes.io/part-of: waytur
+        app.kubernetes.io/component: backend
+    spec:
+      # Sin token de ServiceAccount: la API no habla con Kubernetes, y un
+      # token montado es una credencial que un atacante podria robar.
+      # Ademas se montaria en /var/run/secrets/... (=/run/secrets) y chocaria
+      # con el volumen de secretos de solo lectura.
+      automountServiceAccountToken: false
+      # Sin "service links": por el Service "redis" Kubernetes inyectaria
+      # REDIS_PORT=tcp://10.96.x.x:6379, que pisa nuestro REDIS_PORT.
+      enableServiceLinks: false
+      # Mismo UID/GID que el usuario "app" de la imagen. Kubernetes rechaza
+      # el pod si la imagen intentara correr como root.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        # Los archivos del Secret quedan con este grupo (modo 0440).
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # SIGTERM -> SIGKILL. Cubre preStop (5 s) + cierre de server.js (<= 20 s).
+      terminationGracePeriodSeconds: 30
+      # Repartir replicas entre nodos: si cae un worker no caen todas.
+      # ScheduleAnyway = preferencia (con un solo nodo igual programa).
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: api
+          # Reparto por version (ReplicaSet): en un rolling update los pods
+          # viejos no distorsionan el reparto de los nuevos.
+          matchLabelKeys:
+            - pod-template-hash
+      containers:
+        - name: api
+          image: waytur-api:1.0
+          # kind: la imagen se carga con "kind load docker-image" y no existe
+          # en ningun registro; con "Always" intentaria descargarla y fallaria.
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: api-config
+          # APP_VERSION NO se define aqui a proposito: viene de la imagen
+          # (ENV del Dockerfile). Si se fijara aqui, "kubectl set image ...
+          # waytur-api:1.1" seguiria reportando 1.0 en /quien.
+          ports:
+            # El Service apunta al nombre "http", no al numero.
+            - name: http
+              containerPort: 8000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # Punto de partida (Node + http nativo ronda 40-80 Mi). requests =
+          # reserva del scheduler; limits = techo (CPU se frena; memoria por
+          # encima = OOMKilled). requests != limits => QoS Burstable.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          # startupProbe: hasta 60 s para arrancar sin que la liveness lo mate.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          # readiness: si falla, el pod sale del Service (sin reiniciar).
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 2
+          # liveness: si falla, se reinicia. /health NUNCA consulta Firebase
+          # ni Redis: si lo hiciera, una caida de Firebase reiniciaria las 3
+          # replicas en bucle sin arreglar nada.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            # Al borrar un pod, Kubernetes envia SIGTERM y EN PARALELO lo
+            # quita de los Endpoints. Esperar 5 s deja que kube-proxy deje de
+            # enviarle trafico ANTES de que server.js cierre.
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          volumeMounts:
+            - name: secretos
+              mountPath: /run/secrets
+              readOnly: true
+            # Raiz de solo lectura: solo estos dos directorios son escribibles.
+            - name: tmp
+              mountPath: /tmp
+            - name: datos
+              mountPath: /data
+      volumes:
+        - name: secretos
+          secret:
+            secretName: waytur-secretos
+            items:
+              - key: jwt_secret
+                path: jwt_secret
+              - key: csrf_secret
+                path: csrf_secret
+              - key: firebase_api_key
+                path: firebase_api_key
+              - key: redis_password
+                path: redis_password
+              - key: firebase_service_email
+                path: firebase_service_email
+              - key: firebase_service_password
+                path: firebase_service_password
+            defaultMode: 0440
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+        # Respaldo JSON por pod (modo degradado): cada replica tiene el suyo
+        # y se pierde con el pod. La fuente de verdad es Firestore.
+        - name: datos
+          emptyDir:
+            sizeLimit: 64Mi

@@ -1,0 +1,112 @@
+# Web: Nginx sin privilegios con los estaticos de WayTure y proxy a la API.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: waytur
+    app.kubernetes.io/component: frontend
+spec:
+  # 2 replicas: si una cae o se actualiza, la otra sigue sirviendo.
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: web
+        app.kubernetes.io/part-of: waytur
+        app.kubernetes.io/component: frontend
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      # Usuario nginx de nginx-unprivileged (UID/GID 101).
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: web
+          matchLabelKeys:
+            - pod-template-hash
+      containers:
+        - name: web
+          image: waytur-web:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          # readOnlyRootFilesystem SI funciona: la imagen unprivileged guarda
+          # pid y temporales en /tmp, que aqui es un emptyDir.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # Nginx usa un worker por CPU del nodo; 128Mi da margen.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          # /salud-web no depende de la API.
+          readinessProbe:
+            httpGet:
+              path: /salud-web
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /salud-web
+              port: http
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+# NodePort 30080: kind lo publica en 127.0.0.1:8082 del anfitrion.
+# En produccion: type LoadBalancer o, mejor, Ingress detras de Azure Front
+# Door + WAF (docs/arquitectura-azure.md).
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: waytur
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: waytur
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: web
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      nodePort: 30080
