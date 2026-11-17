@@ -1,0 +1,7 @@
+# docker compose ps
+# Generado: 2026-11-17 01:05:00
+
+NAME             IMAGE                                                                     COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+waytur-api-1     sha256:437f55ec4971b2838c3f6ebb388cd434282cf4844b3a2ed395f8ef2f44d27867   "docker-entrypoint.s…"   api       11 minutes ago   Up 10 minutes (healthy)   8000/tcp
+waytur-redis-1   redis:7.4.6-alpine                                                        "docker-entrypoint.s…"   redis     11 minutes ago   Up 11 minutes (healthy)   6379/tcp
+waytur-web-1     sha256:3a65d2b9afd28de6f4630e0613143f571e11b184509c719ff2ccb26a805cca6b   "/docker-entrypoint.…"   web       11 minutes ago   Up 10 minutes (healthy)   0.0.0.0:8086->8080/tcp, [::]:8086->8080/tcp
