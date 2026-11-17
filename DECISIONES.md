@@ -324,8 +324,12 @@ bucle.
 ### 7.11 Respaldo JSON en un `emptyDir` por pod: limitación real
 - Cada réplica tiene **su propio** respaldo. En modo local
   (`USE_FIREBASE_REST=false`), un viaje creado en un pod no existe en los
-  otros. Medido: el smoke test contra kind falla en "leer el viaje creado" y
-  en "borrarlo".
+  otros. Medido: el smoke test contra kind falla en **entre 2 y 4**
+  comprobaciones, según a qué pod caiga cada petición. Siempre son las que
+  leen, modifican (`PATCH`) o borran el viaje recién creado. Si el `PATCH`
+  cae en un pod sin el viaje, responde 404 y la caché no se invalida.
+  Todas las demás (JWT, CSRF, cabeceras, autorización, caché compartida)
+  pasan.
 - La solución es que Firestore sea el almacén compartido, lo que requiere el
   usuario servicio ([docs/firestore-reglas.md](docs/firestore-reglas.md)).
 
